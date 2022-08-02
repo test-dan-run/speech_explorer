@@ -1,0 +1,11 @@
+SoundFile
+librosa
+jiwer
+editdistance
+diff-match-patch
+
+tqdm
+dash
+dash-bootstrap-components
+pandas
+plotly
