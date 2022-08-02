@@ -29,3 +29,13 @@ If you have predictions and wish to calculate WER, ensure your manifest has the 
 ```bash
 python3 run.py /path/to/manifest.json
 ```
+
+## Citation
+```BibTeX
+@article{kuchaiev2019nemo,
+  title   = {Nemo: a toolkit for building ai applications using neural modules},
+  author  = {Kuchaiev, Oleksii and Li, Jason and Nguyen, Huyen and Hrinchuk, Oleksii and Leary, Ryan and Ginsburg, Boris and Kriman, Samuel and Beliaev, Stanislav and Lavrukhin, Vitaly and Cook, Jack and others},
+  journal = {arXiv preprint arXiv:1909.09577},
+  year    = {2019}
+}
+```
