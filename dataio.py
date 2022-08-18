@@ -1,6 +1,7 @@
-from typing import Tuple
+from typing import Tuple, Set
 from pathlib import Path
 from datetime import datetime
+import os
 from os.path import expanduser
 
 def convert_absolute_path(audio_filepath: str, manifest_path: str) -> str:
@@ -16,6 +17,15 @@ def convert_absolute_path(audio_filepath: str, manifest_path: str) -> str:
 
     return expanduser(audio_filepath)
 
+def load_external_vocab(vocab_path: str) -> Set[str]:
+
+    with open(vocab_path, mode='r', encoding='utf-8') as f:
+        lines = f.readlines()
+    
+    words = [line.strip() for line in lines]
+
+    return set(words)
+
 # load data from JSON manifest file
 def load_data(
     manifest_path: str, 
@@ -25,23 +35,11 @@ def load_data(
     ) -> Tuple:
 
     if vocab_path is not None:
-        # load external vocab
-        vocabulary_ext = {}
-        with open(vocab_path, 'r') as f:
-            lines = f.readlines()
-
-        for line in lines:
-            if '\t' in line:
-                # parse word from TSV file
-                word = line.split('\t')[0]
-            else:
-                # assume each line contains just a single word
-                word = line.strip()
-            vocabulary_ext[word] = 1
+        vocabulary_ext = load_external_vocab(vocab_path)
 
     if not disable_caching:
-        pickle_filename = data_filename.split('.json')[0]
-        json_mtime = datetime.datetime.fromtimestamp(os.path.getmtime(data_filename))
+        pickle_filename = manifest_path.split('.json')[0]
+        json_mtime = datetime.datetime.fromtimestamp(os.path.getmtime(manifest_path))
         timestamp = json_mtime.strftime('%Y%m%d_%H%M')
         pickle_filename += '_' + timestamp + '.pkl'
         if os.path.exists(pickle_filename):
@@ -52,7 +50,7 @@ def load_data(
                     item['OOV'] = item['word'] not in vocabulary_ext
             if estimate_audio:
                 for item in data:
-                    filepath = absolute_audio_filepath(item['audio_filepath'], data_filename)
+                    filepath = absolute_audio_filepath(item['audio_filepath'], manifest_path)
                     signal, sr = librosa.load(path=filepath, sr=None)
                     bw = eval_bandwidth(signal, sr)
                     item['freq_bandwidth'] = int(bw)
@@ -82,7 +80,7 @@ def load_data(
 
     sm = difflib.SequenceMatcher()
     metrics_available = False
-    with open(data_filename, 'r', encoding='utf8') as f:
+    with open(manifest_path, 'r', encoding='utf8') as f:
         for line in tqdm.tqdm(f):
             item = json.loads(line)
             if not isinstance(item['text'], str):
@@ -138,7 +136,7 @@ def load_data(
                 data[-1]['D-I'] = measures['deletions'] - measures['insertions']
 
             if estimate_audio:
-                filepath = absolute_audio_filepath(item['audio_filepath'], data_filename)
+                filepath = absolute_audio_filepath(item['audio_filepath'], manifest_path)
                 signal, sr = librosa.load(path=filepath, sr=None)
                 bw = eval_bandwidth(signal, sr)
                 item['freq_bandwidth'] = int(bw)
