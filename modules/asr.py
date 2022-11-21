@@ -37,11 +37,29 @@ def compute_asr_metrics(
             measures = jiwer.compute_measures(item['text'], item['pred_text'])
             item['word_dist'] = measures['substitutions'] + measures['insertions'] + measures['deletions']
             item['char_dist'] = editdistance.eval(item['text'], item['pred_text'])
+
+            item['sub_hits'] = 0
+            hypo_copy = item['text'].split()
+            pred_copy = item['pred_text'].split()
+            pred_copy2 = pred_copy.copy()
+            for word in pred_copy2:
+                if word in hypo_copy:
+                    item['sub_hits'] += 1
+                    hypo_copy.remove(word)
+                    pred_copy.remove(word)
+            for word in pred_copy:
+                for word2 in hypo_copy:
+                    if editdistance.eval(word, word2)/len(word) < 0.2:
+                        item['sub_hits'] += 1
+                        hypo_copy.remove(word2)
+                        break
+            
             item['hits'] = measures['hits']
 
             item['WER'] = round(item['word_dist']/num_words*100.0, 3)
             item['CER'] = round(item['char_dist']/num_chars*100.0, 3)
             item['WMR'] = round(measures['hits']/num_words*100.0, 3)
+            item['SWMR'] = round(item['sub_hits']/num_words*100.0, 3)
             item['I'] = measures['insertions']
             item['D'] = measures['deletions']
             item['D-I'] = measures['deletions'] - measures['insertions']
@@ -67,6 +85,7 @@ def compute_global_statistics(item_df: pd.DataFrame, ext_vocab: Set, metrics_ava
     wer_count: int = 0
     cer_count: int = 0
     wmr_count: int = 0
+    swmr_count: int = 0
     duration: float = 0.0
 
     for idx, row in item_df.iterrows():
@@ -90,6 +109,7 @@ def compute_global_statistics(item_df: pd.DataFrame, ext_vocab: Set, metrics_ava
         wer_count += row['num_words']
         cer_count += row['num_chars']
         wmr_count += row['hits']
+        swmr_count += row['sub_hits']
 
     vocab_data = [{'word': word, 'count': vocabulary[word]} for word in vocabulary]
     if ext_vocab is not None:
@@ -102,6 +122,7 @@ def compute_global_statistics(item_df: pd.DataFrame, ext_vocab: Set, metrics_ava
         global_stats['wer'] = wer_dist / wer_count * 100.0
         global_stats['cer'] = cer_dist / cer_count * 100.0
         global_stats['wmr'] = wmr_count / wer_count * 100.0
+        global_stats['swmr'] = swmr_count / wer_count * 100.0
 
         acc_sum = 0
         for item in vocab_data:

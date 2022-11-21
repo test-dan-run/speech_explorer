@@ -44,6 +44,12 @@ def load_data(
             item['text'] = ''
         item_data.append(item)
     
-    metrics_available = True if 'pred_text' in item_data[0] else False   
+    metrics_available = True if 'pred_text' in item_data[0] else False
+    metadata_keys = list(item_data[0].keys())
+    metadata_keys.remove('text')
+    if 'duration' in metadata_keys:
+        metadata_keys.remove('duration')
+    if 'pred_text' in metadata_keys:
+        metadata_keys.remove('pred_text')
 
-    return item_data, ext_vocab, metrics_available
+    return item_data, ext_vocab, metrics_available, metadata_keys

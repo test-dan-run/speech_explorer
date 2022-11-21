@@ -4,7 +4,22 @@ import pandas as pd
 
 from typing import List, Tuple, Set
 
-def update_global_statistics(global_stats: pd.DataFrame, vocab_data: List, alphabet: Set, metrics_available: bool = False) -> html.Div:
+def add_slider(name: str, slider_id: str, min: int, max: int, step: int, value: List[int]) -> dcc.RangeSlider:
+    return [
+        dbc.Row(dbc.Col(html.H5(children=name), class_name='text-secondary'), class_name='mt-3'), 
+        html.Div(
+            [
+                dcc.RangeSlider(
+                    min=min,
+                    max=max,
+                    step=step,
+                    value=value,
+                    id=slider_id
+                )
+            ]),
+        ]
+
+def update_global_statistics(global_stats: pd.DataFrame, dataset: pd.DataFrame, vocab_data: List, alphabet: Set, metrics_available: bool = False) -> html.Div:
     title_row =  dbc.Row(dbc.Col(html.H5(children='Global Statistics'), class_name='text-secondary'), class_name='mt-3')
     header_row1 = dbc.Row(
         [
@@ -29,7 +44,7 @@ def update_global_statistics(global_stats: pd.DataFrame, vocab_data: List, alpha
             ),
             # num stats
             dbc.Col(
-                html.H5(len(global_stats), className='text-center p-1', style={'color': 'green', 'opacity': 0.7}),
+                html.H5(len(dataset), className='text-center p-1', style={'color': 'green', 'opacity': 0.7}),
                 width=3,
                 class_name='border-end',
             ),
@@ -60,10 +75,11 @@ def update_global_statistics(global_stats: pd.DataFrame, vocab_data: List, alpha
     if metrics_available:
         header_row2 = dbc.Row(
             [
-                dbc.Col(html.Div('Word Error Rate (WER), %', className='text-secondary'), width=3, class_name='border-end'),
-                dbc.Col(html.Div('Character Error Rate (CER), %', className='text-secondary'),width=3,class_name='border-end'),
-                dbc.Col(html.Div('Word Match Rate (WMR), %', className='text-secondary'), width=3, class_name='border-end'),
-                dbc.Col(html.Div('Mean Word Accuracy, %', className='text-secondary'), width=3),
+                dbc.Col(html.Div('Word Error Rate (WER), %', className='text-secondary'), class_name='border-end'),
+                dbc.Col(html.Div('Character Error Rate (CER), %', className='text-secondary'), class_name='border-end'),
+                dbc.Col(html.Div('Word Match Rate (WMR), %', className='text-secondary'), class_name='border-end'),
+                dbc.Col(html.Div('SubWord Match Rate (SWMR-80%), %', className='text-secondary'),class_name='border-end'),
+                dbc.Col(html.Div('Mean Word Accuracy, %', className='text-secondary')),
             ],
             class_name='bg-light mt-2 rounded-top border-top border-start border-end',
         )
@@ -73,28 +89,35 @@ def update_global_statistics(global_stats: pd.DataFrame, vocab_data: List, alpha
                     html.H5(
                         '{:.2f}'.format(global_stats['wer']), className='text-center p-1', style={'color': 'green', 'opacity': 0.7},
                     ),
-                    width=3,
+                    # width=2,
                     class_name='border-end',
                 ),
                 dbc.Col(
                     html.H5(
                         '{:.2f}'.format(global_stats['cer']), className='text-center p-1', style={'color': 'green', 'opacity': 0.7}
                     ),
-                    width=3,
+                    # width=2,
                     class_name='border-end',
                 ),
                 dbc.Col(
                     html.H5(
                         '{:.2f}'.format(global_stats['wmr']), className='text-center p-1', style={'color': 'green', 'opacity': 0.7},
                     ),
-                    width=3,
+                    # width=2,
+                    class_name='border-end',
+                ),
+                dbc.Col(
+                    html.H5(
+                        '{:.2f}'.format(global_stats['swmr']), className='text-center p-1', style={'color': 'green', 'opacity': 0.7},
+                    ),
+                    # width=2,
                     class_name='border-end',
                 ),
                 dbc.Col(
                     html.H5(
                         '{:.2f}'.format(global_stats['mwa']), className='text-center p-1', style={'color': 'green', 'opacity': 0.7},
                     ),
-                    width=3,
+                    # width=2,
                 ),
             ],
             class_name='bg-light rounded-bottom border-bottom border-start border-end',
