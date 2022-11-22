@@ -1,0 +1,18 @@
+version: '3.9'
+
+services:
+
+  explorer:
+    stdin_open: true
+    tty: true
+    image: explorer:2.0.0
+    volumes:
+      - /mnt/d/projects/speech_explorer:/explorer
+      - /mnt/d/datasets:/datasets
+    ports:
+      - 8050:8050
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    shm_size: 16gb
+    command: python3 test.py
