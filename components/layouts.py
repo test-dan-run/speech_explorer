@@ -3,6 +3,10 @@ import dash_bootstrap_components as dbc
 import pandas as pd
 from plotly import express as px
 from plotly import graph_objects as go
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+from io import BytesIO
+import base64
 
 from typing import List, Tuple, Set
 
@@ -49,6 +53,44 @@ def plot_word_accuracy(vocab_data: List):
 
     return fig
 
+def plot_wordclouds(vocab_data):
+
+    inacc_count_dict = {}
+    part_count_dict = {}
+    acc_count_dict = {}
+    for item in vocab_data:
+        if item['accuracy'] == 0:
+            inacc_count_dict[item['word']] = item['count']
+        elif item['accuracy'] < 100:
+            part_count_dict[item['word']] = item['count']
+        else:
+            acc_count_dict[item['word']] = item['count']
+
+    inacc_wc = WordCloud(background_color='white')
+    inacc_wc.generate_from_frequencies(inacc_count_dict)
+
+    part_wc = WordCloud(background_color='white')
+    part_wc.generate_from_frequencies(part_count_dict)
+    
+    acc_wc = WordCloud(background_color='white')
+    acc_wc.generate_from_frequencies(acc_count_dict)
+
+    inacc_out_img = BytesIO()
+    inacc_wc.to_image().save(inacc_out_img, format='PNG')
+
+    part_out_img = BytesIO()
+    part_wc.to_image().save(part_out_img, format='PNG')
+
+    acc_out_img = BytesIO()
+    acc_wc.to_image().save(acc_out_img, format='PNG')
+
+    inacc_data = base64.b64encode(inacc_out_img.getbuffer()).decode('utf8') # encode to html elements
+    part_data = base64.b64encode(part_out_img.getbuffer()).decode('utf8') # encode to html elements
+    acc_data = base64.b64encode(acc_out_img.getbuffer()).decode('utf8') # encode to html elements
+
+    return [f'data:image/png;base64,{inacc_data}', f'data:image/png;base64,{part_data}', f'data:image/png;base64,{acc_data}']
+
+
 def draw_figures(data):
     figures_labels = {
         'duration': ['Duration', 'Duration, sec'],
@@ -94,6 +136,8 @@ def draw_word_acc_chart(vocab_data):
         dbc.Row(dbc.Col(html.H5('Word accuracy distribution'), class_name='text-secondary'), class_name='mt-3'),
         dbc.Row(dbc.Col(dcc.Graph(id='word-acc-graph', figure=figure_word_acc),),),
     ]    
+
+
 
 def update_global_statistics(global_stats: pd.DataFrame, dataset: pd.DataFrame, vocab_data: List, alphabet: Set, metrics_available: bool = False) -> html.Div:
     title_row =  dbc.Row(dbc.Col(html.H5(children='Global Statistics'), class_name='text-secondary'), class_name='mt-3')
@@ -154,8 +198,9 @@ def update_global_statistics(global_stats: pd.DataFrame, dataset: pd.DataFrame, 
                 dbc.Col(html.Div('Word Error Rate (WER), %', className='text-secondary'), class_name='border-end'),
                 dbc.Col(html.Div('Character Error Rate (CER), %', className='text-secondary'), class_name='border-end'),
                 dbc.Col(html.Div('Word Match Rate (WMR), %', className='text-secondary'), class_name='border-end'),
-                dbc.Col(html.Div('SubWord Match Rate (SWMR-80%), %', className='text-secondary'),class_name='border-end'),
-                dbc.Col(html.Div('Mean Word Accuracy, %', className='text-secondary')),
+                dbc.Col(html.Div('SubWord Match Rate (SWMR-90%), %', className='text-secondary'), class_name='border-end'),
+                dbc.Col(html.Div('SubWord Match Rate (SWMR-75%), %', className='text-secondary'), class_name='border-end'),
+                dbc.Col(html.Div('Mean Vocab Accuracy, %', className='text-secondary')),
             ],
             class_name='bg-light mt-2 rounded-top border-top border-start border-end',
         )
@@ -184,7 +229,14 @@ def update_global_statistics(global_stats: pd.DataFrame, dataset: pd.DataFrame, 
                 ),
                 dbc.Col(
                     html.H5(
-                        '{:.2f}'.format(global_stats['swmr']), className='text-center p-1', style={'color': 'green', 'opacity': 0.7},
+                        '{:.2f}'.format(global_stats['swmr90']), className='text-center p-1', style={'color': 'green', 'opacity': 0.7},
+                    ),
+                    # width=2,
+                    class_name='border-end',
+                ),
+                dbc.Col(
+                    html.H5(
+                        '{:.2f}'.format(global_stats['swmr75']), className='text-center p-1', style={'color': 'green', 'opacity': 0.7},
                     ),
                     # width=2,
                     class_name='border-end',

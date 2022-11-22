@@ -38,20 +38,37 @@ def compute_asr_metrics(
             item['word_dist'] = measures['substitutions'] + measures['insertions'] + measures['deletions']
             item['char_dist'] = editdistance.eval(item['text'], item['pred_text'])
 
-            item['sub_hits'] = 0
-            hypo_copy = item['text'].split()
-            pred_copy = item['pred_text'].split()
-            pred_copy2 = pred_copy.copy()
-            for word in pred_copy2:
-                if word in hypo_copy:
-                    item['sub_hits'] += 1
-                    hypo_copy.remove(word)
-                    pred_copy.remove(word)
-            for word in pred_copy:
-                for word2 in hypo_copy:
-                    if editdistance.eval(word, word2)/len(word) < 0.2:
-                        item['sub_hits'] += 1
-                        hypo_copy.remove(word2)
+            # calculate sub word match rate (50% and 75%)
+            item['sub_hits_90'] = 0
+            item['sub_hits_75'] = 0
+
+            text_list = item['text'].split()
+            pred_list = item['pred_text'].split()
+            pred_list_75 = pred_list.copy()
+            pred_list_90 = pred_list.copy()
+
+            for pred_word in pred_list:
+                if pred_word in text_list:
+                    item['sub_hits_90'] += 1
+                    item['sub_hits_75'] += 1
+                    text_list.remove(pred_word)
+                    pred_list_75.remove(pred_word)
+                    pred_list_90.remove(pred_word)
+            
+            for pred_word in pred_list_75:
+                for hypo_word in text_list:
+                    if editdistance.eval(pred_word, hypo_word) / len(hypo_word) <= 0.1:
+                        item['sub_hits_90'] += 1
+                        item['sub_hits_75'] += 1
+                        text_list.remove(hypo_word)
+                        pred_list_75.remove(pred_word)
+                        break
+            
+            for pred_word in pred_list_90:
+                for hypo_word in text_list:
+                    if editdistance.eval(pred_word, hypo_word) / len(hypo_word) <= 0.25:
+                        item['sub_hits_75'] += 1
+                        text_list.remove(hypo_word)
                         break
             
             item['hits'] = measures['hits']
@@ -59,7 +76,8 @@ def compute_asr_metrics(
             item['WER'] = round(item['word_dist']/num_words*100.0, 3)
             item['CER'] = round(item['char_dist']/num_chars*100.0, 3)
             item['WMR'] = round(measures['hits']/num_words*100.0, 3)
-            item['SWMR'] = round(item['sub_hits']/num_words*100.0, 3)
+            item['SWMR75'] = round(item['sub_hits_75']/num_words*100.0, 3)
+            item['SWMR90'] = round(item['sub_hits_90']/num_words*100.0, 3)
             item['I'] = measures['insertions']
             item['D'] = measures['deletions']
             item['D-I'] = measures['deletions'] - measures['insertions']
@@ -86,7 +104,8 @@ def compute_global_statistics(item_df: pd.DataFrame, ext_vocab: Set, metrics_ava
     wer_count: int = 0
     cer_count: int = 0
     wmr_count: int = 0
-    swmr_count: int = 0
+    swmr75_count: int = 0
+    swmr90_count: int = 0
     duration: float = 0.0
 
     for idx, row in item_df.iterrows():
@@ -110,7 +129,8 @@ def compute_global_statistics(item_df: pd.DataFrame, ext_vocab: Set, metrics_ava
         wer_count += row['num_words']
         cer_count += row['num_chars']
         wmr_count += row['hits']
-        swmr_count += row['sub_hits']
+        swmr75_count += row['sub_hits_75']
+        swmr90_count += row['sub_hits_90']
 
     vocab_data = [{'word': word, 'count': vocabulary[word]} for word in vocabulary]
     if ext_vocab is not None:
@@ -123,7 +143,8 @@ def compute_global_statistics(item_df: pd.DataFrame, ext_vocab: Set, metrics_ava
         global_stats['wer'] = wer_dist / wer_count * 100.0
         global_stats['cer'] = cer_dist / cer_count * 100.0
         global_stats['wmr'] = wmr_count / wer_count * 100.0
-        global_stats['swmr'] = swmr_count / wer_count * 100.0
+        global_stats['swmr75'] = swmr75_count / wer_count * 100.0
+        global_stats['swmr90'] = swmr90_count / wer_count * 100.0
 
         acc_sum = 0
         for item in vocab_data:
