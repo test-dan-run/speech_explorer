@@ -72,6 +72,7 @@ def compute_asr_metrics(
             item['level_db'] = 20 * np.log10(np.max(np.abs(signal)))
 
     item_df = pd.DataFrame(item_data)
+    item_df.fillna('none', inplace=True)
     return item_df
 
 def compute_global_statistics(item_df: pd.DataFrame, ext_vocab: Set, metrics_available: bool = False) -> Tuple[Dict, Set, Set]:

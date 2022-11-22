@@ -1,23 +1,99 @@
 from dash import dash_table, dcc, html
 import dash_bootstrap_components as dbc
 import pandas as pd
+from plotly import express as px
+from plotly import graph_objects as go
 
 from typing import List, Tuple, Set
 
-def add_slider(name: str, slider_id: str, min: int, max: int, step: int, value: List[int]) -> dcc.RangeSlider:
-    return [
-        dbc.Row(dbc.Col(html.H5(children=name), class_name='text-secondary'), class_name='mt-3'), 
-        html.Div(
-            [
-                dcc.RangeSlider(
-                    min=min,
-                    max=max,
-                    step=step,
-                    value=value,
-                    id=slider_id
-                )
-            ]),
+# plot histogram of specified field in data list
+def plot_histogram(data: List, key: str, label: str):
+    fig = px.histogram(
+        data_frame=data[key].tolist(),
+        nbins=50,
+        log_y=True,
+        labels={'value': label},
+        opacity=0.5,
+        color_discrete_sequence=['green'],
+        height=200,
+    )
+    fig.update_layout(showlegend=False, margin=dict(l=0, r=0, t=0, b=0, pad=0))
+    return fig
+
+def plot_word_accuracy(vocab_data: List):
+    labels = ['Unrecognized', 'Sometimes recognized', 'Always recognized']
+    counts = [0, 0, 0]
+    for word in vocab_data:
+        if word['accuracy'] == 0:
+            counts[0] += 1
+        elif word['accuracy'] < 100:
+            counts[1] += 1
+        else:
+            counts[2] += 1
+    colors = ['red', 'orange', 'green']
+
+    fig = go.Figure(
+        data=[
+            go.Bar(
+                x=labels,
+                y=counts,
+                marker_color=colors,
+                text=['{:.2%}'.format(count / sum(counts)) for count in counts],
+                textposition='auto',
+            )
         ]
+    )
+    fig.update_layout(
+        showlegend=False, margin=dict(l=0, r=0, t=0, b=0, pad=0), height=200, yaxis={'title_text': '#words'}
+    )
+
+    return fig
+
+def draw_figures(data):
+    figures_labels = {
+        'duration': ['Duration', 'Duration, sec'],
+        'num_words': ['Number of Words', '#words'],
+        'num_chars': ['Number of Characters', '#chars'],
+        'word_rate': ['Word Rate', '#words/sec'],
+        'char_rate': ['Character Rate', '#chars/sec'],
+        'WER': ['Word Error Rate', 'WER, %'],
+        'CER': ['Character Error Rate', 'CER, %'],
+        'WMR': ['Word Match Rate', 'WMR, %'],
+        'I': ['# Insertions (I)', '#words'],
+        'D': ['# Deletions (D)', '#words'],
+        'D-I': ['# Deletions - # Insertions (D-I)', '#words'],
+        # 'freq_bandwidth': ['Frequency Bandwidth', 'Bandwidth, Hz'],
+        # 'level_db': ['Peak Level', 'Level, dB'],
+    }
+    figures_hist = {}
+    for k in figures_labels:
+        val = data.loc[0,k]
+        if isinstance(val, (int, float)) and not isinstance(val, bool):
+            if k in figures_labels:
+                ylabel = figures_labels[k][0]
+                xlabel = figures_labels[k][1]
+            else:
+                title = k.replace('_', ' ')
+                title = title[0].upper() + title[1:].lower()
+                ylabel = title
+                xlabel = title
+            figures_hist[k] = [ylabel + ' (per utterance)', plot_histogram(data, k, xlabel)]
+
+    graph_charts = []
+    for k in figures_hist:
+        graph_charts.extend([
+            dbc.Row(dbc.Col(html.H5(figures_hist[k][0]), class_name='text-secondary'), class_name='mt-3'),
+            dbc.Row(dbc.Col(dcc.Graph(id=f'{k.replace("_","-")}-graph', figure=figures_hist[k][1]),),),
+        ])
+
+    return graph_charts
+
+def draw_word_acc_chart(vocab_data):
+    figure_word_acc = plot_word_accuracy(vocab_data)
+    return [
+        dbc.Row(dbc.Col(html.H5('Word accuracy distribution'), class_name='text-secondary'), class_name='mt-3'),
+        dbc.Row(dbc.Col(dcc.Graph(id='word-acc-graph', figure=figure_word_acc),),),
+    ]    
 
 def update_global_statistics(global_stats: pd.DataFrame, dataset: pd.DataFrame, vocab_data: List, alphabet: Set, metrics_available: bool = False) -> html.Div:
     title_row =  dbc.Row(dbc.Col(html.H5(children='Global Statistics'), class_name='text-secondary'), class_name='mt-3')
@@ -124,6 +200,8 @@ def update_global_statistics(global_stats: pd.DataFrame, dataset: pd.DataFrame, 
         )
 
         layout.extend([header_row2, element_row2])
+        layout.extend(draw_figures(dataset))
+        layout.extend(draw_word_acc_chart(vocab_data))
 
     return layout
 
